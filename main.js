@@ -365,7 +365,117 @@ this.event = function(event, game) {
 
 
 
+//Part 2, idea 2
+this.options = {
+  root_mode: "",
+  map_size: 150,
+  weapons_store: false,
+  starting_ship: 800,
+  crystal_value: 10,
+};
 
+
+
+/*
+  Alright, let's start the explanation.
+  Every ship need, in team mode, to mine a certain number of gems depending the current
+maximum tier of every ship in this team. So, why don't we try to recreate a sort of 
+mining system as in team mode, where the ship have to mine a certain number of crystals 
+before getting access to a new tier.
+
+
+  Here is the number of gems required to make a ship upgrading to a new tier:
+  -------------------------------------
+  |     Tier      |   Number of gems  |
+  -------------------------------------
+  |     Tier 4    |     540 gems      |
+  -------------------------------------
+  |     Tier 5    |     1000 gems     |
+  -------------------------------------
+  |     Tier 6    |     2000 gems     |
+  -------------------------------------
+  |     Tier 7    |     3000 gems     |
+  -------------------------------------
+*/
+
+var stop_idle = function(ship) {
+  ship.set({idle: false});
+};
+
+var set_less_crystals = function(ship) {
+  if (ship.crystals > 5) { 
+    ship.set({crystals: ship.crystals - 5});
+  } else {
+    ship.set({crystals: ship.crystals - 1});
+  }
+};
+this.tick = function(game) {
+  if (game.step % 15 === 0) {
+    for (let ship of game.ships) {
+      if (ship.type > 700) {
+        ship.custom.tier = "NONE";
+      } else {
+         ship.custom.tier = ship.type + 100;
+      }
+      var upgrade = {
+        id: "upgrade",
+        position: [5,30,8,14],
+        clickable: true,
+        shortcut: "U",
+        visible: true,
+
+        components: [
+          { type: "box",position:[0,0,100,100],stroke:"#CDE",width:2},
+          { type: "text",position:[10,15,80,30],value:ship.custom.tier,color:"#CDE"},
+          { type: "text",position:[20,70,60,20],value:"[U]",color:"#CDE"}
+          ]
+
+      };
+      ship.setUIComponent(upgrade);
+      if (ship.custom.start !== true) {
+        ship.custom.start = true;
+        ship.custom.total_gems = 0;
+        ship.custom.start_giving_gems = false;
+      }
+    }
+  }
+  if (game.step % 60 == 0) {
+    for (let ship of game.ships ) {
+      if (ship.custom.start_giving_gems !== false) {
+        if (ship.crystals !== 0) {
+          set_less_crystals(ship);
+        }
+        else {
+          stop_idle(ship);
+          ship.custom.start_giving_gems = false;
+          echo(ship.name + " has a total gems of  " + ship.custom.total_gems);
+        }
+      }
+    }
+  }
+};
+
+
+var mined_gems = function(ship) {
+  ship.custom.start_giving_gems = true;
+  ship.custom.current_crystals = ship.crystals ; //This variable take the actual number of gems
+  ship.custom.total_gems = ship.custom.total_gems + ship.custom.current_crystals ; //Total mined gems
+  ship.set({idle: true});
+};
+
+
+this.event = function(event, game) {
+  let ship = event.ship;
+  switch (event.name) {
+    case "ui_component_clicked":
+      switch (event.id) {
+        case "upgrade":
+          mined_gems(ship);
+          //break;
+      }
+    break;
+  }
+};
 
 
 
